@@ -87,7 +87,17 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
 .hint{font-size:14px;color:var(--muted);margin-top:6px}
 .hint:empty{display:none}
 .hint.err{color:var(--danger)}
-.styles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.styles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.styles button{font-size:16px;padding:0 4px;white-space:nowrap}
+.variants{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.variants:empty{display:none}
+.variants button{height:44px;padding:0 16px;background:transparent;border:1px solid var(--line2);color:var(--muted);font-size:15px;border-radius:22px}
+.variants button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold2);background:rgba(201,164,92,.12)}
+.who{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 4px;margin-top:12px;scrollbar-width:none}
+.who::-webkit-scrollbar{display:none}
+.who .sw{width:80px}
+.who .dot{width:68px;height:68px;border-radius:34px;display:flex;align-items:center;justify-content:center}
+.who .dot.ph{border-style:dashed;color:var(--gold)}
 .styles button{height:50px;background:transparent;border:1px solid var(--line);color:var(--text);font-family:var(--serif);font-size:18px;border-radius:2px}
 .styles button[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:#121110}
 .create{height:64px;background:var(--gold);color:#121110;border:0;font-family:var(--serif);font-size:25px;letter-spacing:2px;border-radius:2px}
@@ -194,7 +204,7 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
         <div class="plinth" aria-hidden="true"></div>
         <div class="caption" id="caption"></div>
         <div class="row">
-          <button class="btn" id="btnPhoto">Change photo</button>
+          <button class="btn" id="btnPhoto">Customer</button>
           <button class="btn" id="btnFlip" disabled>Before / After</button>
         </div>
         <div class="row">
@@ -209,17 +219,23 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
         <div class="greet"><div><h1 id="greet">Welcome</h1><span id="today"></span></div>
           <input class="input" id="custName" placeholder="Customer name (optional)" aria-label="Customer name (optional)" autocomplete="off"></div>
         <div>
-          <label class="eyebrow" for="barcode">Step 1 — Fabric<span class="ok" id="ok1">✓</span></label>
+          <div class="eyebrow">Step 1 — Who is wearing it<span class="ok" id="ok0">✓</span></div>
+          <div class="who" id="who"></div>
+          <div class="hint" id="whoHint"></div>
+        </div>
+        <div>
+          <label class="eyebrow" for="barcode">Step 2 — Fabric<span class="ok" id="ok1">✓</span></label>
           <input class="input" id="barcode" style="margin-top:12px" placeholder="Scan or type barcode" autocomplete="off" autocapitalize="characters" spellcheck="false">
           <div class="swatches" id="swatches"></div>
           <div class="hint" id="fabHint"></div>
         </div>
         <div>
-          <div class="eyebrow">Step 2 — Style<span class="ok" id="ok2">✓</span></div>
+          <div class="eyebrow">Step 3 — Style<span class="ok" id="ok2">✓</span></div>
           <div class="styles" id="styles"></div>
+          <div class="variants" id="variants"></div>
         </div>
         <div>
-          <label class="eyebrow" for="notes">Step 3 — Special request (optional)</label>
+          <label class="eyebrow" for="notes">Step 4 — Special request (optional)</label>
           <textarea class="input" id="notes" style="margin-top:12px" placeholder="e.g. mandarin collar, full sleeves, wedding look with maroon stole"></textarea>
         </div>
         <div class="warn" id="limitWarn" role="status"></div>
@@ -252,12 +268,17 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
       <div class="head"><h1>Settings</h1></div>
       <div class="set">
         <section>
+          <label class="eyebrow" for="provider">AI service</label>
+          <select class="input" id="provider">
+            <option value="openai">ChatGPT (OpenAI GPT Image)</option>
+            <option value="gemini">Google Gemini (Nano Banana)</option>
+          </select>
+          <div class="note">Both keys can be saved. Switch here any time; stock and gallery stay the same.</div>
+        </section>
+        <section id="gBlock">
           <label class="eyebrow" for="apiKey">Gemini API key</label>
           <div class="row"><input class="input" id="apiKey" type="password" placeholder="Paste the key from Google AI Studio" autocomplete="off" spellcheck="false"><button class="btn" id="btnShowKey" style="flex:none">Show</button></div>
-          <div class="note">The key is kept only on this iPad.</div>
-        </section>
-        <section>
-          <label class="eyebrow" for="model">Image model</label>
+          <label class="eyebrow" for="model" style="margin-top:10px">Image model</label>
           <select class="input" id="model">
             <option value="basic">Nano Banana — normal (about ₹4 per image)</option>
             <option value="fast">Nano Banana 2 — sharper (about ₹6 per image)</option>
@@ -265,6 +286,18 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
             <option value="custom">Other (type below)</option>
           </select>
           <input class="input hidden" id="modelCustom" placeholder="Model name" autocomplete="off" spellcheck="false">
+        </section>
+        <section id="oBlock" class="hidden">
+          <label class="eyebrow" for="oKey">OpenAI API key</label>
+          <div class="row"><input class="input" id="oKey" type="password" placeholder="Paste the key from platform.openai.com (starts with sk-)" autocomplete="off" spellcheck="false"><button class="btn" id="btnShowOKey" style="flex:none">Show</button></div>
+          <label class="eyebrow" for="oQuality" style="margin-top:10px">Picture quality</label>
+          <select class="input" id="oQuality">
+            <option value="medium">Normal (about ₹5 per image)</option>
+            <option value="high">Best (about ₹16 per image)</option>
+          </select>
+        </section>
+        <section>
+          <div class="note">Keys are kept only on this iPad.</div>
           <div class="row"><button class="btn gold" id="btnSaveKey">Save</button><button class="btn" id="btnTest">Test connection</button></div>
           <div class="hint" id="keyHint"></div>
         </section>
@@ -294,6 +327,7 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
 
 <!-- hidden file pickers -->
 <input type="file" id="fileCustomer" accept="image/*" class="hidden">
+<input type="file" id="fileModel" accept="image/*" class="hidden">
 <input type="file" id="fileStock" accept="image/*" multiple class="hidden">
 <input type="file" id="fileRestore" accept=".json,application/json" class="hidden">
 
@@ -326,17 +360,64 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
 const $ = (s, r=document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-const STYLES = [
-  ['Shirt', 'a well-fitted formal full-sleeve shirt tucked into plain dark trousers'],
-  ['Trousers', 'tailored formal trousers made from this fabric, worn with a plain white shirt'],
-  ['Kurta Pajama', 'a knee-length kurta with matching pajama (churidar style), classic Indian cut'],
-  ['Jodhpuri', 'a Jodhpuri bandhgala suit — closed high-neck jacket with matching tapered trousers'],
-  ['Jacket', 'a sleeveless Nehru / modi jacket worn over a plain cream kurta'],
-  ['Suit', 'a two-piece western suit (blazer and trousers) with a plain shirt'],
-  ['Sherwani', 'a long, regal wedding sherwani with matching churidar'],
-  ['Pathani', 'a Pathani suit — long kurta with collar and loose salwar'],
-  ['Indo-Western', 'an elegant Indo-western outfit — asymmetric long jacket over slim trousers'],
+const CATS = [
+  ['Shirt', [
+    ['Formal', 'a well-fitted formal full-sleeve shirt with a classic collar, made from this fabric, tucked into plain charcoal trousers'],
+    ['Casual half sleeve', 'a relaxed half-sleeve casual shirt made from this fabric, untucked, with plain beige chinos'],
+    ['Mandarin collar', 'a full-sleeve mandarin (band) collar shirt made from this fabric, untucked, with plain dark trousers'],
+    ['Short kurta shirt', 'a hip-length kurta-style shirt with mandarin collar and side slits, made from this fabric, with plain white trousers'],
+  ]],
+  ['Trousers', [
+    ['Formal', 'flat-front formal trousers made from this fabric, worn with a plain white formal shirt tucked in and a black belt'],
+    ['Pleated', 'single-pleat formal trousers made from this fabric, worn with a plain light-blue shirt tucked in'],
+    ['Casual', 'casual straight-fit trousers made from this fabric, worn with a plain white t-shirt'],
+  ]],
+  ['Kurta', [
+    ['Kurta Pajama', 'a knee-length straight kurta with a matching pajama, both made from this fabric'],
+    ['Kurta + churidar', 'a knee-length kurta made from this fabric with a plain off-white churidar'],
+    ['Short kurta + jeans', 'a hip-length short kurta made from this fabric, worn with plain dark-blue jeans'],
+    ['Pathani', 'a Pathani suit — long kurta with shirt collar and loose salwar, both made from this fabric'],
+    ['Long kurta', 'a long, below-knee kurta made from this fabric with a plain white pajama'],
+  ]],
+  ['Jodhpuri', [
+    ['Jodhpuri suit', 'a Jodhpuri bandhgala suit — closed high-neck jacket with matching tapered trousers, made from this fabric'],
+    ['Bandhgala jacket', 'a bandhgala (closed high-neck) jacket made from this fabric over plain cream trousers'],
+  ]],
+  ['Jacket', [
+    ['Nehru over kurta', 'a sleeveless Nehru / modi jacket made from this fabric, over a plain cream kurta pajama'],
+    ['Nehru over shirt', 'a sleeveless Nehru jacket made from this fabric, over a plain white shirt and dark trousers'],
+    ['Blazer', 'a single-breasted blazer made from this fabric over a plain white shirt and dark trousers'],
+  ]],
+  ['Suit', [
+    ['2-piece', 'a two-piece suit (blazer and trousers) made from this fabric, with a plain white shirt, no tie'],
+    ['3-piece', 'a three-piece suit with matching waistcoat made from this fabric, plain white shirt and a simple dark tie'],
+    ['Waistcoat', 'a waistcoat made from this fabric over a plain white shirt and dark trousers'],
+  ]],
+  ['Sherwani', [
+    ['Classic', 'a long, regal wedding sherwani made from this fabric with a plain churidar'],
+    ['Short sherwani', 'a knee-length Indo-western sherwani made from this fabric with slim trousers'],
+  ]],
+  ['Indo-Western', [
+    ['Asymmetric jacket', 'an elegant asymmetric long jacket made from this fabric over slim trousers'],
+    ['Open long jacket', 'an open-front long jacket made from this fabric over a plain kurta and slim pants'],
+  ]],
 ];
+const MODELS = [
+  { id: 'm-clean',   name: 'Clean shave',  desc: 'a slim Indian man in his early 20s, clean-shaven, short neat black hair, medium wheatish skin tone, average height' },
+  { id: 'm-beard',   name: 'Full beard',   desc: 'an Indian man in his late 20s with a full, well-groomed black beard and moustache, short black hair, athletic medium build, wheatish skin tone' },
+  { id: 'm-glasses', name: 'Stubble',      desc: 'an Indian man in his early 30s with light stubble, short black hair, thin rectangular glasses, average everyday build, fair-wheatish skin tone' },
+  { id: 'm-broad',   name: 'Broad build',  desc: 'an Indian man in his late 30s with a broad, heavier build and a slight belly, short trimmed black beard, short hair, medium-brown skin tone' },
+  { id: 'm-senior',  name: 'Senior',       desc: 'an Indian man in his mid 50s with short salt-and-pepper hair, a neat grey moustache and clean chin, average build, wheatish skin tone' },
+  { id: 'm-tall',    name: 'Tall, dark',   desc: 'a tall, lean Indian man in his late 20s with deep brown skin, short curly black hair and a thin moustache' },
+];
+const modelPrompt = desc => [
+  `Photorealistic full-length catalogue photo of ${desc}.`,
+  'He stands relaxed and natural, facing the camera: arms resting loosely at his sides, shoulders relaxed, weight slightly on one leg. A gentle, natural soft smile, eyes to camera.',
+  'He wears a plain fitted off-white crew-neck t-shirt, plain mid-grey straight trousers and plain brown leather shoes.',
+  'Whole body in frame from head to shoes, with a little space above the head and below the feet. Camera at chest height, straight on, sharp focus, true-to-life colours.',
+  'Plain, seamless, light-grey studio backdrop, soft even lighting, a gentle shadow under the feet only.',
+  'A real, ordinary-looking person with natural skin texture and natural proportions — not an idealised fashion model. No text, no logo, no watermark, no props, no other people.'
+].join('\n');
 
 /* ---------- storage ---------- */
 const ls = {
@@ -347,11 +428,12 @@ let dbp;
 function db(){
   if (dbp) return dbp;
   dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('purush-tryon', 1);
+    const r = indexedDB.open('purush-tryon', 2);
     r.onupgradeneeded = () => {
       const d = r.result;
       if (!d.objectStoreNames.contains('fabrics')) d.createObjectStore('fabrics', { keyPath: 'barcode' });
       if (!d.objectStoreNames.contains('looks')) d.createObjectStore('looks', { keyPath: 'id', autoIncrement: true });
+      if (!d.objectStoreNames.contains('models')) d.createObjectStore('models', { keyPath: 'id' });
     };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
@@ -508,7 +590,8 @@ function go(v){
 document.querySelectorAll('.nav button').forEach(b => b.addEventListener('click', () => go(b.dataset.view)));
 
 /* ---------- try-on state ---------- */
-const st = { photo: null, fabric: null, style: null, result: null, showing: 'before', lookId: null };
+const st = { photo: null, who: null, whoName: '', fabric: null, cat: null, variant: 0, style: null, result: null, showing: 'before', lookId: null };
+let modelsCache = [];
 let fabricsCache = [];
 
 function renderStage(){
@@ -517,12 +600,12 @@ function renderStage(){
   const src = showResult ? st.result : st.photo;
   if (src) {
     const rv = showResult && st.reveal ? ' ' : ''; st.reveal = false;
-    a.innerHTML = `<img${rv} class="zoomable${rv ? ' reveal' : ''}" alt="${showResult ? 'AI look' : 'Customer photo'}" src="${src}"><div class="arch-tag">${showResult ? 'THE LOOK' : 'BEFORE'}</div>`;
+    a.innerHTML = `<img${rv} class="zoomable${rv ? ' reveal' : ''}" alt="${showResult ? 'AI look' : esc(st.whoName || 'Photo')}" src="${src}"><div class="arch-tag">${showResult ? 'THE LOOK' : esc((st.who === 'customer' ? 'CUSTOMER' : st.whoName || 'BEFORE').toUpperCase())}</div>`;
   } else {
     a.innerHTML = `<div class="arch-empty"><svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#C9A45C" stroke-width="1.3" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>
-      <div style="font-family:var(--serif);font-size:22px;color:var(--text)">Add the customer's photo</div>
-      <div style="font-size:14px;line-height:1.5">Best results: full length, head to shoes,<br>phone at chest height, good light,<br>no headphones or cap</div>
-      <button class="btn gold" id="archPick">Take or choose photo</button></div>`;
+      <div style="font-family:var(--serif);font-size:22px;color:var(--text)">Choose a model in Step 1</div>
+      <div style="font-size:14px;line-height:1.5">or use the customer's own photo:<br>full length, head to shoes, good light,<br>no headphones or cap</div>
+      <button class="btn gold" id="archPick">Customer photo</button></div>`;
     $('#archPick').addEventListener('click', () => pick($('#fileCustomer')));
   }
   $('#btnFlip').disabled = !st.result;
@@ -534,10 +617,10 @@ function renderStage(){
 }
 function updateCreate(){
   const missing = [];
-  if (!st.photo) missing.push('customer photo');
+  if (!st.photo) missing.push('model or customer photo');
   if (!st.fabric) missing.push('fabric');
   if (!st.style) missing.push('style');
-  $('#ok1').classList.toggle('on', !!st.fabric); $('#ok2').classList.toggle('on', !!st.style);
+  $('#ok0').classList.toggle('on', !!st.photo); $('#ok1').classList.toggle('on', !!st.fabric); $('#ok2').classList.toggle('on', !!st.style);
   $('#btnCreate').disabled = missing.length > 0;
   $('#createHint').textContent = missing.length ? 'Still needed: ' + missing.join(', ') : '';
   $('#createHint').classList.remove('err');
@@ -545,6 +628,7 @@ function updateCreate(){
 async function renderSwatches(){
   fabricsCache = (await all('fabrics')).sort((a,b) => (b.added||0) - (a.added||0));
   const q = $('#barcode').value.trim().toUpperCase();
+  if (!st.fabric && q) { const ex = fabricsCache.find(f => f.barcode.toUpperCase() === q); if (ex) { st.fabric = ex; updateCreate(); } }
   const list = q ? fabricsCache.filter(f => f.barcode.toUpperCase().includes(q) || (f.name||'').toUpperCase().includes(q)) : fabricsCache;
   const box = $('#swatches');
   if (!fabricsCache.length) {
@@ -577,42 +661,140 @@ $('#barcode').addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); const first = $('#swatches .sw'); if (!st.fabric && first && $('#swatches').children.length === 1) chooseFabric(first.dataset.code); $('#barcode').blur(); }
 });
 
-$('#styles').innerHTML = STYLES.map(([n]) => `<button data-style="${esc(n)}" aria-pressed="false">${esc(n)}</button>`).join('');
-$('#styles').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  st.style = b.dataset.style;
-  $('#styles').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b));
+function styleDesc(){ const c = CATS.find(x => x[0] === st.cat); return c ? c[1][st.variant][1] : ''; }
+function renderStyles(){
+  $('#styles').innerHTML = CATS.map(([n]) => `<button data-cat="${esc(n)}" aria-pressed="${st.cat === n}">${esc(n)}</button>`).join('');
+  const c = CATS.find(x => x[0] === st.cat);
+  $('#variants').innerHTML = c ? c[1].map(([v], i) => `<button data-i="${i}" aria-pressed="${st.variant === i}">${esc(v)}</button>`).join('') : '';
+  st.style = c ? `${c[0]} · ${c[1][st.variant][0]}` : null;
   updateCreate();
+}
+$('#styles').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (st.cat !== b.dataset.cat) { st.cat = b.dataset.cat; st.variant = 0; } renderStyles(); });
+$('#variants').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.variant = +b.dataset.i; renderStyles(); });
+renderStyles();
+
+/* ---------- who is wearing it ---------- */
+async function loadModels(){
+  const saved = await all('models'); const byId = new Map(saved.map(m => [m.id, m]));
+  modelsCache = MODELS.map(m => ({ ...m, builtin: true, ...(byId.get(m.id) || {}) }))
+    .concat(saved.filter(m => !MODELS.some(b => b.id === m.id)).sort((a,b) => (a.created||0) - (b.created||0)));
+  return modelsCache;
+}
+const camSvg = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.6"/></svg>';
+async function renderWho(){
+  await loadModels();
+  const box = $('#who');
+  const missing = modelsCache.filter(m => m.builtin && !m.photo);
+  box.innerHTML = modelsCache.map(m => `<button class="sw" data-who="${esc(m.id)}" aria-pressed="${st.who === m.id}">
+      <div class="dot${m.photo ? '' : ' ph'}">${m.photo ? `<img alt="" src="${m.thumb || m.photo}">` : '<span style="font-size:22px">…</span>'}</div><span>${esc(m.name)}</span></button>`).join('') +
+    `<button class="sw" data-who="customer" aria-pressed="${st.who === 'customer'}"><div class="dot ph">${st.who === 'customer' && st.photo ? `<img alt="" src="${st.photo}">` : camSvg}</div><span>Customer</span></button>` +
+    `<button class="sw" data-who="add"><div class="dot ph"><span style="font-size:28px;line-height:1">+</span></div><span>Add model</span></button>`;
+  const h = $('#whoHint'); h.classList.remove('err');
+  if (missing.length) {
+    h.innerHTML = `<button class="btn gold" id="mkModels">Create ${missing.length === MODELS.length ? 'the ' + missing.length + ' showroom models' : missing.length + ' missing model' + (missing.length > 1 ? 's' : '')} — one time, about ₹${missing.length * costPerImage()}</button>`;
+    $('#mkModels').addEventListener('click', () => createModels(missing));
+  } else h.textContent = st.who && st.who !== 'customer' ? `Using ${st.whoName}. Tap it again to remake or remove.` : '';
+}
+function selectModel(m){
+  st.who = m.id; st.whoName = m.name; st.photo = m.photo; st.result = null; st.showing = 'before'; st.lookId = null;
+  ls.set('pt_who', m.id); renderStage(); renderWho();
+}
+$('#who').addEventListener('click', async e => {
+  const b = e.target.closest('button.sw'); if (!b) return;
+  const id = b.dataset.who;
+  if (id === 'customer') { if (st.who === 'customer' && st.photo) return; pick($('#fileCustomer')); return; }
+  if (id === 'add') { pick($('#fileModel')); return; }
+  const m = modelsCache.find(x => x.id === id); if (!m) return;
+  if (!m.photo) { createModels([m]); return; }
+  if (st.who === id) { openModel(m); return; }
+  selectModel(m);
 });
+function openModel(m){
+  const s = sheet(m.name, `<img class="big-img zoomable" alt="${esc(m.name)}" src="${m.photo}"><div class="note">${m.builtin ? 'Showroom model. “Remake” creates a new photo of this type of man (about ₹' + costPerImage() + ').' : 'Your own model photo.'}</div>`,
+    `${m.builtin ? `<button class="btn" id="mRe">Remake</button>` : `<button class="btn danger" id="mDel">Delete</button>`}<button class="btn gold" data-close>Done</button>`);
+  if (m.builtin) $('#mRe', s.el).addEventListener('click', () => { s.close(); createModels([m]); });
+  else $('#mDel', s.el).addEventListener('click', async () => { if ($('#mDel', s.el).dataset.sure) { await del('models', m.id); s.close(); if (st.who === m.id) { st.who = null; st.photo = null; ls.set('pt_who', ''); renderStage(); } renderWho(); } else { $('#mDel', s.el).dataset.sure = 1; $('#mDel', s.el).textContent = 'Tap again to delete'; } });
+}
+$('#fileModel').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  let photo; try { photo = await fileToJpeg(f, 1280, 0.86); } catch (err) { toast(err.message); return; }
+  const s = sheet('Add your own model', `<img class="big-img" alt="" src="${photo}"><label class="lbl" for="mName">NAME</label><input class="input" id="mName" placeholder="e.g. Shop model Ravi" autocomplete="off">`,
+    `<button class="btn" data-close>Cancel</button><button class="btn gold" id="mSave">Save model</button>`);
+  setTimeout(() => $('#mName', s.el).focus(), 50);
+  $('#mSave', s.el).addEventListener('click', async () => {
+    const name = $('#mName', s.el).value.trim() || 'My model';
+    const m = { id: 'u-' + Date.now(), name, photo, thumb: await thumbOf(photo, 220), created: Date.now() };
+    await put('models', m); s.close(); await loadModels(); selectModel(m); toast('Model saved');
+  });
+});
+async function createModels(list){
+  const key = currentKey();
+  if (!key) { toast(`Add your ${provider() === 'openai' ? 'OpenAI' : 'Gemini'} API key in Settings first`); go('settings'); return; }
+  aborter = new AbortController(); let done = 0, blocked = false;
+  try {
+    for (const m of list) {
+      if (!canSpend()) { blocked = true; break; }
+      showLoading({ thumbs: '', sub: `Creating model ${done + 1} of ${list.length} — ${m.name}`, msgs: ['Casting the model…','Setting the lights…','Choosing the pose…','Taking the photo…'] });
+      const raw = await genPlain(key, modelPrompt(m.desc), aborter.signal);
+      const photo = await toJpeg(raw, 1280, 0.88);
+      await put('models', { id: m.id, name: m.name, photo, thumb: await thumbOf(photo, 220), created: Date.now() });
+      addSpend(costPerImage()); renderSpend(); done++;
+      if (st.who === m.id) st.photo = photo;
+    }
+    hideLoading();
+    await loadModels();
+    if (done) { toast(`${done} model${done > 1 ? 's' : ''} ready`); const first = modelsCache.find(x => x.id === (st.who || list[0].id)) || modelsCache.find(x => x.photo); if (first && first.photo && (!st.who || st.who === first.id)) selectModel(first); }
+  } catch (e) {
+    hideLoading();
+    if (e.name === 'AbortError') toast('Cancelled');
+    else { const h = $('#whoHint'); h.textContent = e.message || 'Something went wrong. Please try again.'; h.classList.add('err'); }
+  } finally {
+    aborter = null; await renderWho(); renderStage();
+    if (blocked) { blockedMsg('#whoHint'); sheet('Daily limit reached', `<div class="warn stop">${esc($('#whoHint').textContent)}</div>`, `<button class="btn gold" data-close>OK</button>`); }
+  }
+}
+async function toJpeg(dataUrl, max, q){
+  const img = await loadImg(dataUrl);
+  const s = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+  const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * s); c.height = Math.round(img.naturalHeight * s);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); return c.toDataURL('image/jpeg', q);
+}
 
 $('#btnPhoto').addEventListener('click', () => pick($('#fileCustomer')));
 $('#fileCustomer').addEventListener('change', async e => {
   const f = e.target.files && e.target.files[0]; if (!f) return;
-  try { st.photo = await fileToJpeg(f); st.result = null; st.showing = 'before'; st.lookId = null; renderStage(); }
+  try { st.photo = await fileToJpeg(f); st.who = 'customer'; st.whoName = 'Customer'; st.result = null; st.showing = 'before'; st.lookId = null; renderStage(); renderWho(); }
   catch (err) { toast(err.message); }
 });
 $('#btnFlip').addEventListener('click', () => { st.showing = st.showing === 'after' ? 'before' : 'after'; renderStage(); });
 $('#btnDownload').addEventListener('click', () => st.result && download(st.result, lookName(st.fabric && st.fabric.barcode, $('#custName').value.trim())));
 $('#btnShare').addEventListener('click', () => st.result && share(st.result, lookName(st.fabric && st.fabric.barcode, $('#custName').value.trim()), `${st.style} · ${st.fabric ? st.fabric.barcode : ''}`));
-$('#btnNew').addEventListener('click', () => {
-  Object.assign(st, { photo:null, fabric:null, style:null, result:null, showing:'before', lookId:null });
+$('#btnNew').addEventListener('click', async () => {
+  Object.assign(st, { fabric:null, cat:null, variant:0, style:null, result:null, showing:'before', lookId:null });
+  if (st.who === 'customer') { st.who = null; st.photo = null; }
   $('#custName').value = ''; $('#barcode').value = ''; $('#notes').value = '';
-  $('#styles').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', 'false'));
-  renderStage(); renderSwatches();
+  await restoreWho(); renderStyles(); renderStage(); renderSwatches();
 });
+async function restoreWho(){
+  await loadModels();
+  const id = ls.get('pt_who'); const m = modelsCache.find(x => x.id === id && x.photo);
+  if (m && st.who !== 'customer') { st.who = m.id; st.whoName = m.name; st.photo = m.photo; }
+  renderWho();
+}
 
 /* ---------- loading screen ---------- */
 const MSGS = ['Unrolling the fabric…','Taking his measurements…','Marking the cloth with chalk…','Cutting the pattern…','Stitching the seams…','Setting the collar…','Pressing it neat…','Final fitting…'];
 let msgT, secT;
-function showLoading(){
+function showLoading(o = {}){
+  clearInterval(msgT); clearInterval(secT);
   const L = $('#loading'); L.classList.remove('hidden');
-  $('#loadThumbs').innerHTML = `<img alt="" src="${st.photo}"><i>+</i><img alt="" src="${st.fabric.thumb || st.fabric.photo}">`;
-  let i = 0; const m = $('#loadMsg'); m.textContent = MSGS[0];
-  msgT = setInterval(() => { i = (i + 1) % MSGS.length; m.style.opacity = 0; setTimeout(() => { m.textContent = MSGS[i]; m.style.opacity = 1; }, 350); }, 3200);
-  const t0 = Date.now(); const sub = $('#loadSub');
-  sub.textContent = `${st.style} in ${st.fabric.barcode} · usually 15–40 seconds`;
+  $('#loadThumbs').innerHTML = o.thumbs !== undefined ? o.thumbs : `<img alt="" src="${st.photo}"><i>+</i><img alt="" src="${st.fabric.thumb || st.fabric.photo}">`;
+  const msgs = o.msgs || MSGS; let i = 0; const m = $('#loadMsg'); m.textContent = msgs[0];
+  msgT = setInterval(() => { i = (i + 1) % msgs.length; m.style.opacity = 0; setTimeout(() => { m.textContent = msgs[i]; m.style.opacity = 1; }, 350); }, 3200);
+  const t0 = Date.now(); const sub = $('#loadSub'); const label = o.sub || `${st.style} in ${st.fabric.barcode}`;
+  sub.textContent = `${label} · usually ${provider() === 'openai' ? '30–90' : '15–40'} seconds`;
   const bar = $('#loadBar'); bar.style.transition = 'none'; bar.style.width = '0'; void bar.offsetWidth; bar.style.transition = '';
-  secT = setInterval(() => { const s = Math.round((Date.now()-t0)/1000); bar.style.width = (92 * (1 - Math.exp(-s/22))) + '%'; sub.textContent = `${st.style} in ${st.fabric.barcode} · ${s}s`; }, 1000);
+  secT = setInterval(() => { const s = Math.round((Date.now()-t0)/1000); bar.style.width = (92 * (1 - Math.exp(-s/22))) + '%'; sub.textContent = `${label} · ${s}s`; }, 1000);
 }
 function hideLoading(){ clearInterval(msgT); clearInterval(secT); $('#loading').classList.add('hidden'); }
 let aborter = null;
@@ -625,7 +807,28 @@ const TIERS = {
   basic: { cost: 4,  ids: ['gemini-2.5-flash-image', 'gemini-3.1-flash-lite-image', 'gemini-3.1-flash-image', 'gemini-3.1-flash-image-preview'] },
 };
 function tier(){ const t = ls.get('pt_model', 'basic'); return TIERS[t] ? t : (t ? 'custom' : 'basic'); }
-function costPerImage(){ const t = tier(); return t === 'custom' ? 12 : TIERS[t].cost; }
+function provider(){ return ls.get('pt_provider', 'openai') === 'gemini' ? 'gemini' : 'openai'; }
+function pname(){ return provider() === 'openai' ? 'OpenAI' : 'Google'; }
+function oQuality(){ return ls.get('pt_oq', 'medium') === 'high' ? 'high' : 'medium'; }
+function costPerImage(){
+  if (provider() === 'openai') return oQuality() === 'high' ? 16 : 5;
+  const t = tier(); return t === 'custom' ? 12 : TIERS[t].cost;
+}
+const OPENAI_IDS = ['gpt-image-2', 'gpt-image-1.5', 'gpt-image-1'];
+const isModelErr = (status, j) => status === 404 || (status === 400 && /model/i.test((j && j.error && (j.error.message + ' ' + (j.error.code||''))) || '') && /not.?found|does not exist|invalid|unknown|not supported/i.test((j && j.error && j.error.message) || ''));
+async function resolveOpenAI(key, force){
+  const cached = ls.get('pt_ok_openai');
+  if (cached && !force) return cached;
+  for (const id of OPENAI_IDS) {
+    let r;
+    try { r = await fetch(`https://api.openai.com/v1/models/${encodeURIComponent(id)}`, { headers: { Authorization: 'Bearer ' + key } }); }
+    catch { throw new Error('No internet connection, or OpenAI could not be reached.'); }
+    if (r.ok) { ls.set('pt_ok_openai', id); return id; }
+    let j = {}; try { j = await r.json(); } catch {}
+    if (r.status !== 404) throw new Error(friendlyErr(r.status, j));
+  }
+  throw new Error('Your OpenAI account has no image model available. Check platform.openai.com.');
+}
 async function resolveModel(key, force){
   const t = tier();
   if (t === 'custom') return ls.get('pt_model');
@@ -663,77 +866,58 @@ function renderSpend(){
   w.textContent = k.stop ? 'Today’s limit is reached. No more looks can be made today — this keeps your spending safe. It resets tomorrow.'
     : k.near ? `Careful: only ${k.left} look${k.left > 1 ? 's' : ''} left today before the daily limit.` : '';
 }
+function roleName(){ return st.who === 'customer' ? 'THE CUSTOMER' : 'THE MODEL'; }
+function roleLabel(){ return st.who === 'customer' ? 'THE CUSTOMER (a real person; keep his identity exactly)' : 'THE MODEL (our showroom model; keep him exactly the same person)'; }
 function buildPrompt(){
-  const desc = (STYLES.find(s => s[0] === st.style) || [,st.style])[1];
+  const desc = styleDesc() || st.style;
   const notes = $('#notes').value.trim();
+  const R = roleName();
   return [
-    `Create one realistic photo of THE CUSTOMER (image 1) wearing ${desc}, stitched from THE FABRIC (image 2).`,
+    `Create one realistic photo of ${R} (image 1) wearing ${desc}. THE FABRIC is image 2.`,
+    'Replace everything he is wearing in image 1 with this new outfit.',
     '',
     'IDENTITY — most important:',
-    '- It must be the same real person, instantly recognisable to his family. Copy his exact face shape, eyes, nose, lips, jawline, skin tone and skin texture.',
-    '- Keep his hair exactly as it is in image 1 (same length, same messiness) — do not style, tidy or change it.',
-    '- Keep his facial hair exactly as it is — do not add or thicken a beard or moustache.',
+    '- It must be the same person as image 1, instantly recognisable. Copy his exact face shape, eyes, nose, lips, jawline, skin tone and skin texture.',
+    '- Keep his hair exactly as it is in image 1 — do not restyle or change it.',
+    '- Keep his facial hair exactly as it is — do not add, remove or thicken a beard or moustache.',
     '- Keep his glasses if he wears them. Remove headphones, earphones, caps, bags or anything in his hands.',
     '- Keep his real body build and height. If image 1 shows only his head and shoulders, give him a body that matches his build — not slimmer, taller or more muscular.',
-    '- Do NOT turn him into a fashion model. No beautifying, no sharper jaw, no smoothing of skin.',
+    '- Do NOT beautify him: no sharper jaw, no smoothing of skin.',
     '',
     'POSE AND EXPRESSION:',
-    '- Relaxed, natural, everyday standing pose, as if a friend took the photo: arms resting loosely at his sides, shoulders relaxed, weight slightly on one leg. Not a model pose, no hands clasped in front.',
+    '- Relaxed, natural, everyday standing pose: arms resting loosely at his sides, shoulders relaxed, weight slightly on one leg. Not a model pose, no hands clasped in front.',
     '- A gentle, natural, soft smile that suits his face — subtle, not a big grin. Eyes looking at the camera.',
     '',
     'GARMENT:',
-    '- Use the exact colour, pattern, motif size, weave and sheen of the fabric in image 2. Neat, well-fitted tailoring, natural fabric folds.',
+    '- Use the exact colour, pattern, motif size, weave and sheen of the fabric in image 2 for every part described as made from this fabric. Neat, well-fitted tailoring, natural fabric folds.',
     '',
     'PHOTO:',
     '- Full length from head to shoes, camera at chest height, straight on, sharp focus, true-to-life colours.',
     '- Background: plain, seamless, light-grey studio backdrop with soft even light and only a gentle shadow under the feet. Nothing else in the background — no room, furniture, props, patterns, beige or coloured tints, text, logos, watermark or other people.',
-    notes ? `\nSPECIAL REQUEST from the customer (follow it unless it changes his identity): ${notes}` : '',
+    notes ? `\nSPECIAL REQUEST (follow it unless it changes his identity): ${notes}` : '',
   ].join('\n');
 }
+function currentKey(){ return provider() === 'openai' ? ls.get('pt_okey') : ls.get('pt_key'); }
+function canSpend(){ const L = dailyLimit(), P = photoLimit(); if (P !== null && photosToday() >= P) return false; if (L !== null && spentToday() + costPerImage() > L) return false; return true; }
+function blockedMsg(sel){
+  const L = dailyLimit(), P = photoLimit(), h = $(sel);
+  h.textContent = (P !== null && photosToday() >= P) ? `Daily limit reached: ${photosToday()} of ${P} photos made today. It resets tomorrow, or raise it in Settings.`
+    : `Daily money limit reached: about ₹${spentToday()} of ₹${L} used, and one more photo costs about ₹${costPerImage()}. It resets tomorrow, or raise it in Settings.`;
+  h.classList.add('err'); renderSpend();
+}
 async function generate(){
-  const key = ls.get('pt_key');
-  if (!key) { toast('Add your Gemini API key in Settings first'); go('settings'); return; }
-  const L = dailyLimit(), cost = costPerImage();
-  const P = photoLimit();
+  const key = currentKey();
+  if (!key) { toast(`Add your ${provider() === 'openai' ? 'OpenAI' : 'Gemini'} API key in Settings first`); go('settings'); return; }
+  const cost = costPerImage();
   if (limitState().stop) { renderSpend(); sheet('Daily limit reached', `<div class="warn stop">No more looks can be made today. ${esc(spendText())}.</div><div class="note">This stops you from spending more than you set. It starts again tomorrow, or you can change the limit in Settings.</div>`, `<button class="btn gold" data-close>OK</button>`); }
-  if (P !== null && photosToday() >= P) {
-    const h = $('#createHint'); h.textContent = `Daily limit reached: ${photosToday()} of ${P} photos made today. It resets tomorrow, or raise it in Settings.`; h.classList.add('err'); return;
-  }
-  if (L !== null && spentToday() + cost > L) {
-    const h = $('#createHint'); h.textContent = `Daily money limit reached: about ₹${spentToday()} of ₹${L} used, and one more look costs about ₹${cost}. It resets tomorrow, or raise it in Settings.`; h.classList.add('err'); return;
-  }
+  if (!canSpend()) { blockedMsg('#createHint'); return; }
   aborter = new AbortController();
   showLoading();
   try {
-    const model = await resolveModel(key);
-    const body = {
-      contents: [{ role: 'user', parts: [
-        { text: 'Image 1 — THE CUSTOMER (a real person; keep his identity exactly):' },
-        { inlineData: { mimeType: mimeOf(st.photo), data: b64(st.photo) } },
-        { text: 'Image 2 — THE FABRIC (unstitched cloth from our shop; use exactly this cloth):' },
-        { inlineData: { mimeType: mimeOf(st.fabric.photo), data: b64(st.fabric.photo) } },
-        { text: buildPrompt() },
-      ]}],
-      generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '3:4' } }
-    };
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key },
-      body: JSON.stringify(body), signal: aborter.signal
-    });
-    let j = {}; try { j = await r.json(); } catch {}
-    if (r.status === 404) ls.set('pt_ok_' + tier(), '');
-    if (!r.ok) throw new Error(friendlyErr(r.status, j));
-    const parts = (((j.candidates || [])[0] || {}).content || {}).parts || [];
-    const imgs = parts.map(p => p.inlineData || p.inline_data).filter(Boolean);
-    if (!imgs.length) {
-      const reason = (j.promptFeedback && j.promptFeedback.blockReason) || ((j.candidates||[])[0]||{}).finishReason || '';
-      throw new Error('The AI did not return a picture' + (reason ? ` (${reason})` : '') + '. Try a clearer photo or change the special request.');
-    }
-    const last = imgs[imgs.length - 1];
-    st.result = `data:${last.mimeType || last.mime_type || 'image/png'};base64,${last.data}`;
+    st.result = provider() === 'openai' ? await genOpenAI(key, aborter.signal) : await genGemini(key, aborter.signal);
     st.showing = 'after'; st.reveal = true;
     addSpend(cost); renderSpend();
-    const look = { created: Date.now(), customer: $('#custName').value.trim(), barcode: st.fabric.barcode, style: st.style, notes: $('#notes').value.trim(), before: st.photo, after: st.result, thumb: await thumbOf(st.result, 420) };
+    const look = { created: Date.now(), customer: $('#custName').value.trim(), who: st.whoName, barcode: st.fabric.barcode, style: st.style, notes: $('#notes').value.trim(), before: st.photo, after: st.result, thumb: await thumbOf(st.result, 420) };
     st.lookId = await put('looks', look);
     hideLoading(); renderStage(); window.scrollTo({ top: 0, behavior: 'smooth' });
     toast('Look created and saved to Gallery');
@@ -743,15 +927,82 @@ async function generate(){
     const h = $('#createHint'); h.textContent = e.message || 'Something went wrong. Please try again.'; h.classList.add('err');
   } finally { aborter = null; }
 }
+async function geminiCall(key, parts, signal){
+  const model = await resolveModel(key);
+  const body = { contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '3:4' } } };
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-goog-api-key': key }, body: JSON.stringify(body), signal
+  });
+  let j = {}; try { j = await r.json(); } catch {}
+  if (r.status === 404) ls.set('pt_ok_' + tier(), '');
+  if (!r.ok) throw new Error(friendlyErr(r.status, j));
+  const out = ((((j.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.inlineData || p.inline_data).filter(Boolean);
+  if (!out.length) {
+    const reason = (j.promptFeedback && j.promptFeedback.blockReason) || ((j.candidates||[])[0]||{}).finishReason || '';
+    throw new Error('The AI did not return a picture' + (reason ? ` (${reason})` : '') + '. Try a clearer photo or change the special request.');
+  }
+  const last = out[out.length - 1];
+  return `data:${last.mimeType || last.mime_type || 'image/png'};base64,${last.data}`;
+}
+async function openaiCall(key, signal, makeReq){
+  for (let tried = 0; tried < OPENAI_IDS.length; tried++) {
+    const model = await resolveOpenAI(key);
+    const { url, init } = makeReq(model);
+    const r = await fetch(url, { ...init, signal });
+    let j = {}; try { j = await r.json(); } catch {}
+    if (!r.ok && isModelErr(r.status, j)) {
+      const next = OPENAI_IDS[OPENAI_IDS.indexOf(model) + 1];
+      if (!next) break;
+      ls.set('pt_ok_openai', next); continue;
+    }
+    if (!r.ok) throw new Error(friendlyErr(r.status, j));
+    const d = (j.data || [])[0] || {};
+    if (d.b64_json) return `data:image/png;base64,${d.b64_json}`;
+    if (d.url) { const ir = await fetch(d.url, { signal }); const bl = await ir.blob(); return await new Promise(res => { const fr = new FileReader(); fr.onload = () => res(fr.result); fr.readAsDataURL(bl); }); }
+    throw new Error('The AI did not return a picture. Try again, or change the special request.');
+  }
+  ls.set('pt_ok_openai', '');
+  throw new Error('No OpenAI image model worked for this key. Check your OpenAI account.');
+}
+function genGemini(key, signal){
+  return geminiCall(key, [
+    { text: `Image 1 — ${roleLabel()}:` },
+    { inlineData: { mimeType: mimeOf(st.photo), data: b64(st.photo) } },
+    { text: 'Image 2 — THE FABRIC (unstitched cloth from our shop; use exactly this cloth):' },
+    { inlineData: { mimeType: mimeOf(st.fabric.photo), data: b64(st.fabric.photo) } },
+    { text: buildPrompt() },
+  ], signal);
+}
+function genOpenAI(key, signal){
+  const prompt = `There are two input images. Image 1 is ${roleLabel()}. Image 2 is THE FABRIC (unstitched cloth from our shop; use exactly this cloth).\n\n` + buildPrompt();
+  return openaiCall(key, signal, model => {
+    const fd = new FormData();
+    fd.append('model', model); fd.append('prompt', prompt);
+    fd.append('image[]', dataUrlToFile(st.photo, 'person.jpg'));
+    fd.append('image[]', dataUrlToFile(st.fabric.photo, 'fabric.jpg'));
+    fd.append('size', '1024x1536'); fd.append('quality', oQuality()); fd.append('n', '1');
+    if (model === 'gpt-image-1') fd.append('input_fidelity', 'high');
+    return { url: 'https://api.openai.com/v1/images/edits', init: { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: fd } };
+  });
+}
+function genPlain(key, prompt, signal){
+  if (provider() !== 'openai') return geminiCall(key, [{ text: prompt }], signal);
+  return openaiCall(key, signal, model => ({ url: 'https://api.openai.com/v1/images/generations', init: { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, prompt, size: '1024x1536', quality: oQuality(), n: 1 }) } }));
+}
 function friendlyErr(status, j){
   const msg = (j && j.error && j.error.message) || '';
-  if (status === 400 && /api key/i.test(msg)) return 'The API key is not valid. Check it in Settings.';
-  if (status === 401 || status === 403) return 'Google refused the key. Check the key and that billing is on in Google AI Studio.';
+  const code = (j && j.error && (j.error.code || j.error.type)) || '';
+  const P = pname(), home = provider() === 'openai' ? 'platform.openai.com' : 'Google AI Studio';
+  if (/verif/i.test(msg)) return 'OpenAI needs your organisation verified before it can make images. Go to platform.openai.com → Settings → Organization → General → Verify Organization, then try again.';
+  if (/moderation|safety/i.test(msg + ' ' + code)) return `${P}’s safety filter refused this photo. Try a different photo of the customer, or remove the special request. No money was charged.`;
+  if ((status === 400 && /api key/i.test(msg)) || status === 401) return `The ${P} API key is not valid. Check it in Settings.`;
+  if (status === 403) return `${P} refused the key. Check the key and that billing is on at ${home}.`;
   if (status === 404) return 'This image model was not found. Tap Create again, or pick another model in Settings.';
-  if (/credit|prepa|billing|balance/i.test(msg)) return 'Your Google credit has run out or billing is not active. Top up in Google AI Studio → Billing. No more money was charged.';
-  if (status === 429) return 'Limit reached on your Google account (quota or billing). Wait a minute, or check billing in Google AI Studio.';
-  if (status >= 500) return 'Google’s servers are busy. Please try again in a moment.';
-  return 'Error from Google: ' + (msg || status);
+  if (/credit|prepa|billing|balance|insufficient_quota|exceeded your current quota/i.test(msg + ' ' + code)) return `Your ${P} credit has run out or billing is not active. Top up at ${home} → Billing. No more money was charged.`;
+  if (status === 429) return `${P} says too many requests right now. Wait a minute and try again.`;
+  if (status >= 500) return `${P}’s servers are busy. Please try again in a moment.`;
+  return `Error from ${P}: ` + (msg || status);
 }
 $('#btnCreate').addEventListener('click', generate);
 
@@ -832,7 +1083,11 @@ async function openLook(id){
 }
 
 /* ---------- settings ---------- */
+function showProviderBlocks(){ const o = $('#provider').value === 'openai'; $('#gBlock').classList.toggle('hidden', o); $('#oBlock').classList.toggle('hidden', !o); }
+$('#provider').addEventListener('change', showProviderBlocks);
 function renderSettings(){
+  $('#provider').value = provider(); showProviderBlocks();
+  $('#oKey').value = ls.get('pt_okey'); $('#oQuality').value = oQuality();
   $('#apiKey').value = ls.get('pt_key');
   const t = tier();
   if (t !== 'custom') { $('#model').value = t; $('#modelCustom').classList.add('hidden'); }
@@ -844,11 +1099,14 @@ function renderSettings(){
 }
 $('#model').addEventListener('change', () => $('#modelCustom').classList.toggle('hidden', $('#model').value !== 'custom'));
 function saveSettings(){
+  ls.set('pt_provider', $('#provider').value);
+  ls.set('pt_okey', $('#oKey').value.trim());
+  ls.set('pt_oq', $('#oQuality').value);
   ls.set('pt_key', $('#apiKey').value.trim());
   const m = $('#model').value === 'custom' ? $('#modelCustom').value.trim() : $('#model').value;
   ls.set('pt_model', m);
 }
-$('#btnShowKey').addEventListener('click', () => { const i = $('#apiKey'); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; $('#btnShowKey').textContent = show ? 'Hide' : 'Show'; });
+[['#btnShowKey','#apiKey'],['#btnShowOKey','#oKey']].forEach(([b, f]) => $(b).addEventListener('click', () => { const i = $(f); const show = i.type === 'password'; i.type = show ? 'text' : 'password'; $(b).textContent = show ? 'Hide' : 'Show'; }));
 $('#btnSaveLimit').addEventListener('click', () => {
   const clean = v => v === '' ? '' : String(Math.max(0, Math.round(Number(v) || 0)));
   ls.set('pt_limit', clean($('#dailyLimit').value.trim()));
@@ -856,17 +1114,19 @@ $('#btnSaveLimit').addEventListener('click', () => {
   const L = dailyLimit(), P = photoLimit();
   renderSpend(); toast(`Limits saved: ${P === null ? 'no photo limit' : P + ' photos'} · ${L === null ? 'no money limit' : '₹' + L} per day`);
 });
-$('#btnSaveKey').addEventListener('click', () => { saveSettings(); const h = $('#keyHint'); h.classList.remove('err'); h.textContent = 'Saved.'; });
+$('#btnSaveKey').addEventListener('click', () => { saveSettings(); renderSpend(); const h = $('#keyHint'); h.classList.remove('err'); h.textContent = `Saved. Using ${provider() === 'openai' ? 'ChatGPT (OpenAI)' : 'Google Gemini'}.`; });
 $('#btnTest').addEventListener('click', async () => {
   saveSettings(); const h = $('#keyHint'); h.classList.remove('err'); h.textContent = 'Checking…';
-  const key = ls.get('pt_key'); if (!key) { h.textContent = 'Paste a key first.'; h.classList.add('err'); return; }
+  const o = provider() === 'openai';
+  const key = o ? ls.get('pt_okey') : ls.get('pt_key'); if (!key) { h.textContent = 'Paste a key first.'; h.classList.add('err'); return; }
   try {
-    const id = await resolveModel(key, true);
-    h.textContent = `Connected. Using ${id}.`;
-  } catch (e) { h.textContent = e.message || 'No internet connection, or Google could not be reached.'; h.classList.add('err'); }
+    const id = o ? await resolveOpenAI(key, true) : await resolveModel(key, true);
+    h.textContent = `Connected to ${o ? 'OpenAI' : 'Google'}. Using ${id}.`;
+  } catch (e) { h.textContent = e.message || 'No internet connection, or the AI service could not be reached.'; h.classList.add('err'); }
+  renderSpend();
 });
 $('#btnBackup').addEventListener('click', async () => {
-  const data = { app: 'purush-tryon', v: 1, at: new Date().toISOString(), fabrics: await all('fabrics'), looks: await all('looks') };
+  const data = { app: 'purush-tryon', v: 1, at: new Date().toISOString(), fabrics: await all('fabrics'), looks: await all('looks'), models: await all('models') };
   const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
   const name = `purush-backup-${new Date().toISOString().slice(0,10)}.json`;
   const file = new File([blob], name, { type: 'application/json' });
@@ -881,14 +1141,15 @@ $('#fileRestore').addEventListener('change', async e => {
     if (d.app !== 'purush-tryon') throw new Error();
     for (const x of d.fabrics || []) await put('fabrics', x);
     for (const x of d.looks || []) { const { id, ...rest } = x; await put('looks', rest); }
-    toast(`Restored ${(d.fabrics||[]).length} fabrics and ${(d.looks||[]).length} looks`); renderSettings();
+    for (const x of d.models || []) await put('models', x);
+    toast(`Restored ${(d.fabrics||[]).length} fabrics, ${(d.models||[]).length} models and ${(d.looks||[]).length} looks`); renderSettings(); restoreWho();
   } catch { toast('That is not a Purush backup file'); }
 });
 
 /* ---------- start ---------- */
 (() => { const h = new Date().getHours(); $('#greet').textContent = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
   $('#today').textContent = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' }); })();
-renderStage(); renderSwatches(); renderSpend();
+renderStage(); renderSwatches(); renderSpend(); restoreWho().then(renderStage);
 window.__purush = { st, put, all, clearStore };
 })();
 </script>
