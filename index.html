@@ -241,6 +241,7 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
         <div class="warn" id="limitWarn" role="status"></div>
         <button class="create" id="btnCreate" disabled>Create the Look</button>
         <div class="hint" id="createHint"></div>
+        <div class="warn hidden" id="dupHint" role="status" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><span id="dupText"></span><button class="btn gold" id="dupShow" style="height:46px">Show it</button></div>
         <div class="hint" id="spendLine" style="margin-top:-8px"></div>
       </div>
     </section>
@@ -259,7 +260,12 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
 
     <!-- GALLERY -->
     <section id="v-gallery" class="hidden">
-      <div class="head"><h1>Gallery</h1><div class="note" id="galCount"></div></div>
+      <div class="head"><h1>Gallery</h1>
+        <div class="row" style="flex-wrap:wrap">
+          <input class="input" id="galSearch" type="search" style="width:340px" placeholder="Search barcode, name, model or style" aria-label="Search the gallery" autocomplete="off" spellcheck="false">
+          <span class="note" id="galCount"></span>
+        </div>
+      </div>
       <div id="galGrid" class="grid"></div>
     </section>
 
@@ -624,7 +630,34 @@ function updateCreate(){
   $('#btnCreate').disabled = missing.length > 0;
   $('#createHint').textContent = missing.length ? 'Still needed: ' + missing.join(', ') : '';
   $('#createHint').classList.remove('err');
+  checkDup();
 }
+/* ---------- already made? ---------- */
+const norm = v => String(v || '').trim().toLowerCase();
+async function findDup(){
+  if (!st.photo || !st.fabric || !st.style) return null;
+  const looks = await all('looks'); const notes = norm($('#notes').value);
+  const hit = looks.filter(l => norm(l.barcode) === norm(st.fabric.barcode) && l.style === st.style && norm(l.notes) === notes &&
+    (st.who === 'customer' ? l.before === st.photo : (l.whoId ? l.whoId === st.who : l.who === st.whoName)))
+    .sort((a,b) => b.created - a.created);
+  return hit[0] || null;
+}
+let dupTok = 0, dupLook = null;
+async function checkDup(){
+  const t = ++dupTok; const l = await findDup(); if (t !== dupTok) return;
+  dupLook = l; const box = $('#dupHint');
+  if (l && st.lookId !== l.id) {
+    $('#dupText').textContent = `Already in the Gallery (made ${new Date(l.created).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}). Show it instead of making a new one.`;
+    box.classList.remove('hidden');
+  } else box.classList.add('hidden');
+}
+function showExisting(l){
+  st.result = l.after; st.showing = 'after'; st.lookId = l.id; st.reveal = true;
+  renderStage(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  toast('Shown from the Gallery — nothing was charged');
+}
+$('#dupShow').addEventListener('click', () => dupLook && showExisting(dupLook));
+$('#notes').addEventListener('input', () => { clearTimeout(window.__dupT); window.__dupT = setTimeout(checkDup, 300); });
 async function renderSwatches(){
   fabricsCache = (await all('fabrics')).sort((a,b) => (b.added||0) - (a.added||0));
   const q = $('#barcode').value.trim().toUpperCase();
@@ -905,7 +938,18 @@ function blockedMsg(sel){
     : `Daily money limit reached: about ₹${spentToday()} of ₹${L} used, and one more photo costs about ₹${costPerImage()}. It resets tomorrow, or raise it in Settings.`;
   h.classList.add('err'); renderSpend();
 }
-async function generate(){
+async function generate(force){
+  if (force !== true) {
+    const d = await findDup();
+    if (d) {
+      const s = sheet('Already made', `<div class="pair"><div><span class="lbl">IN THE GALLERY</span><img class="zoomable" alt="Existing look" src="${d.thumb || d.after}"></div>
+        <div class="note" style="align-self:center">${esc(d.style)} · Fabric ${esc(d.barcode)}<br>${esc(d.who || '')}${d.customer ? ' · ' + esc(d.customer) : ''}<br>Made ${new Date(d.created).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}<br><br>Showing it is free. A new one costs about ₹${costPerImage()}.</div></div>`,
+        `<button class="btn" id="dupNew">Make a new one</button><button class="btn gold" id="dupUse">Show this one</button>`);
+      $('#dupUse', s.el).addEventListener('click', () => { s.close(); showExisting(d); });
+      $('#dupNew', s.el).addEventListener('click', () => { s.close(); generate(true); });
+      return;
+    }
+  }
   const key = currentKey();
   if (!key) { toast(`Add your ${provider() === 'openai' ? 'OpenAI' : 'Gemini'} API key in Settings first`); go('settings'); return; }
   const cost = costPerImage();
@@ -917,8 +961,8 @@ async function generate(){
     st.result = provider() === 'openai' ? await genOpenAI(key, aborter.signal) : await genGemini(key, aborter.signal);
     st.showing = 'after'; st.reveal = true;
     addSpend(cost); renderSpend();
-    const look = { created: Date.now(), customer: $('#custName').value.trim(), who: st.whoName, barcode: st.fabric.barcode, style: st.style, notes: $('#notes').value.trim(), before: st.photo, after: st.result, thumb: await thumbOf(st.result, 420) };
-    st.lookId = await put('looks', look);
+    const look = { created: Date.now(), customer: $('#custName').value.trim(), who: st.whoName, whoId: st.who, barcode: st.fabric.barcode, style: st.style, notes: $('#notes').value.trim(), before: st.photo, after: st.result, thumb: await thumbOf(st.result, 420) };
+    st.lookId = await put('looks', look); checkDup();
     hideLoading(); renderStage(); window.scrollTo({ top: 0, behavior: 'smooth' });
     toast('Look created and saved to Gallery');
   } catch (e) {
@@ -1004,7 +1048,7 @@ function friendlyErr(status, j){
   if (status >= 500) return `${P}’s servers are busy. Please try again in a moment.`;
   return `Error from ${P}: ` + (msg || status);
 }
-$('#btnCreate').addEventListener('click', generate);
+$('#btnCreate').addEventListener('click', () => generate());
 
 /* ---------- stock ---------- */
 async function renderStock(){
@@ -1065,18 +1109,23 @@ async function openFabric(code){
 /* ---------- gallery ---------- */
 async function renderGallery(){
   const looks = (await all('looks')).sort((a,b) => b.created - a.created);
-  $('#galCount').textContent = looks.length ? `${looks.length} look${looks.length>1?'s':''}` : '';
+  const terms = norm($('#galSearch').value).split(/\s+/).filter(Boolean);
+  const list = terms.length ? looks.filter(l => { const hay = norm([l.barcode, l.customer, l.who, l.style, l.notes].join(' ')); return terms.every(t => hay.includes(t)); }) : looks;
+  $('#galCount').textContent = looks.length ? (terms.length ? `${list.length} of ${looks.length} looks` : `${looks.length} look${looks.length>1?'s':''}`) : '';
   const g = $('#galGrid');
   if (!looks.length) { g.innerHTML = `<div class="empty" style="grid-column:1/-1">Looks you create appear here.</div>`; return; }
-  g.innerHTML = looks.map(l => `<button class="card tall" data-id="${l.id}"><img alt="" src="${l.thumb || l.after}" loading="lazy">
-    <div class="meta"><div class="code">${esc(l.customer || l.style)}</div><div class="sub">${esc(l.style)} · ${esc(l.barcode)} · ${new Date(l.created).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div></div></button>`).join('');
+  if (!list.length) { g.innerHTML = `<div class="empty" style="grid-column:1/-1">No look matches “${esc($('#galSearch').value.trim())}”.</div>`; return; }
+  g.innerHTML = list.map(l => `<button class="card tall" data-id="${l.id}"><img alt="" src="${l.thumb || l.after}" loading="lazy">
+    <div class="meta"><div class="code">${esc(l.barcode)}</div><div class="sub">${esc(l.style)}${l.who ? ' · ' + esc(l.who) : ''}${l.customer ? ' · ' + esc(l.customer) : ''} · ${new Date(l.created).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div></div></button>`).join('');
   g.querySelectorAll('.card').forEach(c => c.addEventListener('click', () => openLook(+c.dataset.id)));
 }
+$('#galSearch').addEventListener('input', renderGallery);
 async function openLook(id){
   const l = await getOne('looks', id); if (!l) return;
   const s = sheet(l.customer || l.style, `<div class="pair"><div><span class="lbl">BEFORE</span><img class="zoomable" alt="Before" src="${l.before}"></div><div><span class="lbl">THE LOOK</span><img class="zoomable" alt="After" src="${l.after}"></div></div>
     <div class="note">${esc(l.style)} · Fabric ${esc(l.barcode)}${l.notes ? ' · “' + esc(l.notes) + '”' : ''}</div>`,
-    `<button class="btn danger" id="lDel">Delete</button><button class="btn" id="lShare">Share</button><button class="btn gold" id="lDown">Download</button>`);
+    `<button class="btn danger" id="lDel">Delete</button><button class="btn" id="lShare">Share</button><button class="btn" id="lDown">Download</button><button class="btn gold" id="lShow">Show to customer</button>`);
+  $('#lShow', s.el).addEventListener('click', () => { s.close(); openViewer(l.after, 'The look'); });
   $('#lShare', s.el).addEventListener('click', () => share(l.after, lookName(l.barcode, l.customer), `${l.style} · ${l.barcode}`));
   $('#lDown', s.el).addEventListener('click', () => download(l.after, lookName(l.barcode, l.customer)));
   $('#lDel', s.el).addEventListener('click', async () => { if ($('#lDel', s.el).dataset.sure) { await del('looks', id); s.close(); renderGallery(); } else { $('#lDel', s.el).dataset.sure = 1; $('#lDel', s.el).textContent = 'Tap again to delete'; } });
