@@ -100,6 +100,11 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
 .prev img{width:100%;height:132px;object-fit:cover;display:block;background:var(--panel2)}
 .prev span{display:block;padding:6px 8px;font-size:12px;line-height:1.3;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .prev span b{color:var(--gold2);font-weight:600}
+.check{display:flex;align-items:center;gap:14px;margin-top:12px;padding:12px 16px;border:1px solid var(--line);background:#1F1C18;cursor:pointer;font-size:16px;line-height:1.35;min-height:56px}
+.check input{width:26px;height:26px;flex:none;accent-color:var(--gold);margin:0}
+.check small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.check.on{border-color:var(--gold);background:rgba(201,164,92,.1)}
+.check.off{opacity:.45;pointer-events:none}
 .who{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 4px;margin-top:12px;scrollbar-width:none}
 .who::-webkit-scrollbar{display:none}
 .who .sw{width:80px}
@@ -235,6 +240,7 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
           <input class="input" id="barcode" style="margin-top:12px" placeholder="Scan or type barcode" autocomplete="off" autocapitalize="characters" spellcheck="false">
           <div class="swatches" id="swatches"></div>
           <div class="hint" id="fabHint"></div>
+          <label class="check off" id="multiWrap"><input type="checkbox" id="multiShade" disabled><span>Multi-shade fabric — use all shades<small>Tick when the cloth has several shades or a border (light to dark ombré, embroidered border). Remembered for this barcode.</small></span></label>
           <div id="prevBox" class="hidden" style="margin-top:12px">
             <div class="lbl" id="prevTitle">ALREADY MADE IN THIS FABRIC</div>
             <div class="prev" id="prevLooks"></div>
@@ -652,7 +658,7 @@ const norm = v => String(v || '').trim().toLowerCase();
 async function findDup(){
   if (!st.photo || !st.fabric || !st.style) return null;
   const looks = await all('looks'); const notes = norm($('#notes').value);
-  const hit = looks.filter(l => norm(l.barcode) === norm(st.fabric.barcode) && l.style === st.style && norm(l.notes) === notes &&
+  const hit = looks.filter(l => norm(l.barcode) === norm(st.fabric.barcode) && l.style === st.style && norm(l.notes) === notes && !!l.multi === !!st.fabric.multi &&
     (st.who === 'customer' ? l.before === st.photo : (l.whoId ? l.whoId === st.who : l.who === st.whoName)))
     .sort((a,b) => b.created - a.created);
   return hit[0] || null;
@@ -691,8 +697,20 @@ async function renderSwatches(){
   if (st.fabric) h.textContent = `Selected: ${st.fabric.barcode}${st.fabric.name ? ' — ' + st.fabric.name : ''}`;
   else if (q && !list.length) { h.textContent = `No fabric with barcode “${q}” in stock.`; h.classList.add('err'); }
   else h.textContent = '';
-  renderPrev();
+  renderPrev(); renderMulti();
 }
+function renderMulti(){
+  const on = !!(st.fabric && st.fabric.multi);
+  $('#multiShade').checked = on; $('#multiShade').disabled = !st.fabric;
+  $('#multiWrap').classList.toggle('on', on); $('#multiWrap').classList.toggle('off', !st.fabric);
+}
+$('#multiShade').addEventListener('change', async () => {
+  if (!st.fabric) return;
+  st.fabric.multi = $('#multiShade').checked;
+  try { const f = await getOne('fabrics', st.fabric.barcode); if (f) { f.multi = st.fabric.multi; await put('fabrics', f); } } catch {}
+  renderMulti(); checkDup();
+  toast(st.fabric.multi ? `${st.fabric.barcode} marked as multi-shade` : `${st.fabric.barcode} set back to a single-shade fabric`);
+});
 let prevTok = 0;
 async function renderPrev(){
   const t = ++prevTok; const box = $('#prevBox');
@@ -957,6 +975,14 @@ function buildPrompt(){
     '- Use the exact colour, pattern, motif size, weave and sheen of the fabric in image 2 for every part described as made from this fabric. Neat, well-fitted tailoring, natural fabric folds.',
     '- Any plain bottom wear (pajama, churidar, salwar, trousers) that is not made from this fabric must be clean plain white or off-white unless stated otherwise — never a dark or clashing colour under a dark top.',
     '',
+    ...(st.fabric && st.fabric.multi ? [
+    'MULTI-SHADE FABRIC — very important:',
+    '- The fabric in image 2 has several shades and/or sections (for example a light ground that fades into a darker colour, and a heavily patterned or embroidered border panel). Use ALL of them. Do NOT pick only one shade, and do NOT make the garment one flat colour.',
+    '- Lay them out like a designer panel garment: the lightest shade on the shoulders and upper body, blending smoothly (ombré, like real dip-dyeing — no hard line) into the darker shade towards the hem.',
+    '- Place the border / heavily patterned section as a wide band along the hem and as matching bands at the sleeve cuffs. Use a narrow strip of the same border pattern around the neckline and down the button placket.',
+    '- Keep the small scattered motifs from the light section on the body. Keep every colour exactly as in the fabric.',
+    '',
+    ] : []),
     'PHOTO:',
     '- Full length from head to shoes, camera at chest height, straight on, sharp focus, true-to-life colours.',
     '- Background: plain, seamless, light-grey studio backdrop with soft even light and only a gentle shadow under the feet. Nothing else in the background — no room, furniture, props, patterns, beige or coloured tints, text, logos, watermark or other people.',
@@ -994,7 +1020,7 @@ async function generate(force){
     st.result = provider() === 'openai' ? await genOpenAI(key, aborter.signal) : await genGemini(key, aborter.signal);
     st.showing = 'after'; st.reveal = true;
     addSpend(cost); renderSpend();
-    const look = { created: Date.now(), customer: $('#custName').value.trim(), who: st.whoName, whoId: st.who, barcode: st.fabric.barcode, style: st.style, notes: $('#notes').value.trim(), before: st.photo, after: st.result, thumb: await thumbOf(st.result, 420) };
+    const look = { created: Date.now(), customer: $('#custName').value.trim(), who: st.whoName, whoId: st.who, barcode: st.fabric.barcode, style: st.style, multi: !!st.fabric.multi, notes: $('#notes').value.trim(), before: st.photo, after: st.result, thumb: await thumbOf(st.result, 420) };
     st.lookId = await put('looks', look); st.shown = null; checkDup(); renderPrev();
     hideLoading(); renderStage(); window.scrollTo({ top: 0, behavior: 'smooth' });
     toast('Look created and saved to Gallery');
@@ -1092,7 +1118,7 @@ async function renderStock(){
   if (!items.length) { g.innerHTML = `<div class="empty" style="grid-column:1/-1">No fabrics yet.<br>Tap <b>+ Add fabrics</b>, choose photos from Photos or Files, then type each barcode.</div>`; return; }
   if (!list.length) { g.innerHTML = `<div class="empty" style="grid-column:1/-1">Nothing matches “${esc(q)}”.</div>`; return; }
   g.innerHTML = list.map(f => `<button class="card" data-code="${esc(f.barcode)}"><img alt="" src="${f.thumb || f.photo}" loading="lazy">
-    <div class="meta"><div class="code">${esc(f.barcode)}</div>${f.name ? `<div class="sub">${esc(f.name)}</div>` : ''}</div></button>`).join('');
+    <div class="meta"><div class="code">${esc(f.barcode)}</div>${f.name || f.multi ? `<div class="sub">${[f.multi ? 'Multi-shade' : '', esc(f.name || '')].filter(Boolean).join(' · ')}</div>` : ''}</div></button>`).join('');
   g.querySelectorAll('.card').forEach(c => c.addEventListener('click', () => openFabric(c.dataset.code)));
 }
 $('#stockSearch').addEventListener('input', renderStock);
@@ -1132,10 +1158,12 @@ $('#fileStock').addEventListener('change', async e => {
 async function openFabric(code){
   const f = await getOne('fabrics', code); if (!f) return;
   const s = sheet(f.barcode, `<img class="big-img zoomable" alt="Fabric ${esc(f.barcode)}" src="${f.photo}">
-    <label class="lbl" for="fName">NAME / NOTE</label><input class="input" id="fName" value="${esc(f.name||'')}" autocomplete="off">`,
+    <label class="lbl" for="fName">NAME / NOTE</label><input class="input" id="fName" value="${esc(f.name||'')}" autocomplete="off">
+    <label class="check${f.multi ? ' on' : ''}"><input type="checkbox" id="fMulti"${f.multi ? ' checked' : ''}><span>Multi-shade fabric — use all shades<small>Light to dark ombré and/or an embroidered border</small></span></label>`,
     `<button class="btn danger" id="fDel">Delete</button><button class="btn" id="fSave">Save</button><button class="btn gold" id="fUse">Use for try-on</button>`);
   $('#fDel', s.el).addEventListener('click', async () => { if ($('#fDel', s.el).dataset.sure) { await del('fabrics', code); s.close(); toast('Deleted'); if (st.fabric && st.fabric.barcode === code) st.fabric = null; renderStock(); } else { $('#fDel', s.el).dataset.sure = 1; $('#fDel', s.el).textContent = 'Tap again to delete'; } });
-  $('#fSave', s.el).addEventListener('click', async () => { f.name = $('#fName', s.el).value.trim(); await put('fabrics', f); s.close(); renderStock(); });
+  $('#fMulti', s.el).addEventListener('change', e => e.target.closest('.check').classList.toggle('on', e.target.checked));
+  $('#fSave', s.el).addEventListener('click', async () => { f.name = $('#fName', s.el).value.trim(); f.multi = $('#fMulti', s.el).checked; await put('fabrics', f); s.close(); if (st.fabric && st.fabric.barcode === f.barcode) st.fabric.multi = f.multi; renderStock(); });
   $('#fUse', s.el).addEventListener('click', async () => { s.close(); go('tryon'); await renderSwatches(); chooseFabric(code); });
 }
 
