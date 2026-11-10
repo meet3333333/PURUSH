@@ -93,6 +93,13 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
 .variants:empty{display:none}
 .variants button{height:44px;padding:0 16px;background:transparent;border:1px solid var(--line2);color:var(--muted);font-size:15px;border-radius:22px}
 .variants button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold2);background:rgba(201,164,92,.12)}
+.prev{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:none}
+.prev::-webkit-scrollbar{display:none}
+.prev button{flex:none;width:104px;background:var(--panel);border:1px solid var(--line);padding:0;color:var(--text);text-align:left;border-radius:2px;overflow:hidden}
+.prev button[aria-pressed="true"]{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,164,92,.3)}
+.prev img{width:100%;height:132px;object-fit:cover;display:block;background:var(--panel2)}
+.prev span{display:block;padding:6px 8px;font-size:12px;line-height:1.3;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prev span b{color:var(--gold2);font-weight:600}
 .who{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 4px;margin-top:12px;scrollbar-width:none}
 .who::-webkit-scrollbar{display:none}
 .who .sw{width:80px}
@@ -228,6 +235,10 @@ textarea.input{height:64px;padding:14px 18px;resize:none;font-size:16px}
           <input class="input" id="barcode" style="margin-top:12px" placeholder="Scan or type barcode" autocomplete="off" autocapitalize="characters" spellcheck="false">
           <div class="swatches" id="swatches"></div>
           <div class="hint" id="fabHint"></div>
+          <div id="prevBox" class="hidden" style="margin-top:12px">
+            <div class="lbl" id="prevTitle">ALREADY MADE IN THIS FABRIC</div>
+            <div class="prev" id="prevLooks"></div>
+          </div>
         </div>
         <div>
           <div class="eyebrow">Step 3 — Style<span class="ok" id="ok2">✓</span></div>
@@ -372,6 +383,7 @@ const CATS = [
     ['Casual half sleeve', 'a relaxed half-sleeve casual shirt made from this fabric, untucked, with plain beige chinos'],
     ['Mandarin collar', 'a full-sleeve mandarin (band) collar shirt made from this fabric, untucked, with plain dark trousers'],
     ['Short kurta shirt', 'a hip-length kurta-style shirt with mandarin collar and side slits, made from this fabric, with plain white trousers'],
+    ['Hunting shirt', 'a hunting shirt (safari-style overshirt) made from this fabric: classic shirt collar, full button front with tonal buttons, a shaped front yoke, two chest patch pockets and two larger lower patch pockets, each pocket with a pointed button-down flap, and fine contrast hand pick-stitching (small visible saddle stitches) outlining the pockets, flaps and yoke; hip length, long sleeves casually rolled to the forearm; worn untucked with plain off-white trousers'],
   ]],
   ['Trousers', [
     ['Formal', 'flat-front formal trousers made from this fabric, worn with a plain white formal shirt tucked in and a black belt'],
@@ -379,20 +391,23 @@ const CATS = [
     ['Casual', 'casual straight-fit trousers made from this fabric, worn with a plain white t-shirt'],
   ]],
   ['Kurta', [
-    ['Kurta Pajama', 'a knee-length straight kurta with a matching pajama, both made from this fabric'],
+    ['Kurta Pajama', 'a knee-length straight kurta made from this fabric; the pajama is plain white or off-white cotton when the fabric is dark or strongly coloured (only when the fabric itself is very light, the pajama is made from the same fabric)'],
+    ['Matching pajama', 'a knee-length straight kurta with a matching pajama, both made from this same fabric'],
     ['Kurta + churidar', 'a knee-length kurta made from this fabric with a plain off-white churidar'],
     ['Short kurta + jeans', 'a hip-length short kurta made from this fabric, worn with plain dark-blue jeans'],
-    ['Pathani', 'a Pathani suit — long kurta with shirt collar and loose salwar, both made from this fabric'],
+    ['Pathani', 'a Pathani suit — long kurta with shirt collar made from this fabric, with a loose salwar; the salwar is plain white or off-white cotton when the fabric is dark or strongly coloured (only when the fabric itself is very light, the salwar is made from the same fabric)'],
     ['Long kurta', 'a long, below-knee kurta made from this fabric with a plain white pajama'],
   ]],
   ['Jodhpuri', [
     ['Jodhpuri suit', 'a Jodhpuri bandhgala suit — closed high-neck jacket with matching tapered trousers, made from this fabric'],
     ['Bandhgala jacket', 'a bandhgala (closed high-neck) jacket made from this fabric over plain cream trousers'],
+    ['Hunting Jodhpuri', 'a hunting-style Jodhpuri made from this fabric: closed bandhgala (band) collar, hip-length, full button front, full sleeves, two chest and two lower patch pockets each with a pointed button-down flap, and fine contrast hand pick-stitching outlining the pockets, flaps and front yoke; worn with plain off-white tapered jodhpur trousers'],
   ]],
   ['Jacket', [
     ['Nehru over kurta', 'a sleeveless Nehru / modi jacket made from this fabric, over a plain cream kurta pajama'],
     ['Nehru over shirt', 'a sleeveless Nehru jacket made from this fabric, over a plain white shirt and dark trousers'],
     ['Blazer', 'a single-breasted blazer made from this fabric over a plain white shirt and dark trousers'],
+    ['Hunting jacket', 'a hunting jacket (safari jacket) made from this fabric: slightly structured, hip-length, shirt-style collar, full button front, full-length sleeves, a front yoke, two chest and two lower patch pockets each with a pointed button-down flap, and fine contrast hand pick-stitching outlining the pockets, flaps and yoke; worn buttoned over plain off-white trousers'],
   ]],
   ['Suit', [
     ['2-piece', 'a two-piece suit (blazer and trousers) made from this fabric, with a plain white shirt, no tie'],
@@ -603,7 +618,7 @@ let fabricsCache = [];
 function renderStage(){
   const a = $('#archIn');
   const showResult = st.result && st.showing === 'after';
-  const src = showResult ? st.result : st.photo;
+  const src = showResult ? st.result : (st.shown && st.shown.id === st.lookId && st.result ? st.shown.before : st.photo);
   if (src) {
     const rv = showResult && st.reveal ? ' ' : ''; st.reveal = false;
     a.innerHTML = `<img${rv} class="zoomable${rv ? ' reveal' : ''}" alt="${showResult ? 'AI look' : esc(st.whoName || 'Photo')}" src="${src}"><div class="arch-tag">${showResult ? 'THE LOOK' : esc((st.who === 'customer' ? 'CUSTOMER' : st.whoName || 'BEFORE').toUpperCase())}</div>`;
@@ -617,7 +632,7 @@ function renderStage(){
   $('#btnFlip').disabled = !st.result;
   $('#btnShare').disabled = !st.result; $('#btnDownload').disabled = !st.result;
   $('#btnFlip').textContent = st.showing === 'after' ? 'Show before' : 'Show the look';
-  const cap = st.result ? `${st.style || ''}${st.fabric ? ' · ' + st.fabric.barcode : ''}` : '';
+  const cap = st.result ? (st.shown && st.shown.id === st.lookId ? `${st.shown.style} · ${st.shown.barcode}${st.shown.who ? ' · ' + st.shown.who : ''}` : `${st.style || ''}${st.fabric ? ' · ' + st.fabric.barcode : ''}`) : '';
   $('#caption').textContent = cap;
   updateCreate();
 }
@@ -652,8 +667,8 @@ async function checkDup(){
   } else box.classList.add('hidden');
 }
 function showExisting(l){
-  st.result = l.after; st.showing = 'after'; st.lookId = l.id; st.reveal = true;
-  renderStage(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  st.result = l.after; st.showing = 'after'; st.lookId = l.id; st.reveal = true; st.shown = l;
+  renderStage(); renderPrev(); window.scrollTo({ top: 0, behavior: 'smooth' });
   toast('Shown from the Gallery — nothing was charged');
 }
 $('#dupShow').addEventListener('click', () => dupLook && showExisting(dupLook));
@@ -676,7 +691,24 @@ async function renderSwatches(){
   if (st.fabric) h.textContent = `Selected: ${st.fabric.barcode}${st.fabric.name ? ' — ' + st.fabric.name : ''}`;
   else if (q && !list.length) { h.textContent = `No fabric with barcode “${q}” in stock.`; h.classList.add('err'); }
   else h.textContent = '';
+  renderPrev();
 }
+let prevTok = 0;
+async function renderPrev(){
+  const t = ++prevTok; const box = $('#prevBox');
+  if (!st.fabric) { box.classList.add('hidden'); return; }
+  const code = norm(st.fabric.barcode);
+  const looks = (await all('looks')).filter(l => norm(l.barcode) === code).sort((a,b) => b.created - a.created);
+  if (t !== prevTok) return;
+  if (!looks.length) { box.classList.add('hidden'); return; }
+  $('#prevTitle').textContent = `ALREADY MADE IN ${st.fabric.barcode} (${looks.length}) — TAP TO SHOW, FREE`;
+  $('#prevLooks').innerHTML = looks.map(l => `<button data-id="${l.id}" aria-pressed="${st.lookId === l.id}"><img alt="" src="${l.thumb || l.after}" loading="lazy"><span><b>${esc((l.style || '').split(' · ').pop())}</b></span><span>${esc(l.who || l.customer || '')}</span></button>`).join('');
+  box.classList.remove('hidden');
+}
+$('#prevLooks').addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const l = await getOne('looks', +b.dataset.id); if (l) showExisting(l);
+});
 function chooseFabric(code){
   const f = fabricsCache.find(x => x.barcode === code);
   if (!f) return;
@@ -923,6 +955,7 @@ function buildPrompt(){
     '',
     'GARMENT:',
     '- Use the exact colour, pattern, motif size, weave and sheen of the fabric in image 2 for every part described as made from this fabric. Neat, well-fitted tailoring, natural fabric folds.',
+    '- Any plain bottom wear (pajama, churidar, salwar, trousers) that is not made from this fabric must be clean plain white or off-white unless stated otherwise — never a dark or clashing colour under a dark top.',
     '',
     'PHOTO:',
     '- Full length from head to shoes, camera at chest height, straight on, sharp focus, true-to-life colours.',
@@ -962,7 +995,7 @@ async function generate(force){
     st.showing = 'after'; st.reveal = true;
     addSpend(cost); renderSpend();
     const look = { created: Date.now(), customer: $('#custName').value.trim(), who: st.whoName, whoId: st.who, barcode: st.fabric.barcode, style: st.style, notes: $('#notes').value.trim(), before: st.photo, after: st.result, thumb: await thumbOf(st.result, 420) };
-    st.lookId = await put('looks', look); checkDup();
+    st.lookId = await put('looks', look); st.shown = null; checkDup(); renderPrev();
     hideLoading(); renderStage(); window.scrollTo({ top: 0, behavior: 'smooth' });
     toast('Look created and saved to Gallery');
   } catch (e) {
